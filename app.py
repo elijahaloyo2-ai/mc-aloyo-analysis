@@ -1,4 +1,4 @@
-import streamlit as st
+ import streamlit as st
 import pandas as pd
 import uuid
 from datetime import datetime
@@ -17,7 +17,6 @@ st.markdown("""
 
 # --- DATABASE INITIALIZATION ---
 if 'students_db' not in st.session_state:
-    # This acts as our central registry
     st.session_state.students_db = pd.DataFrame(columns=[
         'Name', 'Grade', 'Subject', 'Score', 'Points', 'Performance Level'
     ])
@@ -44,7 +43,6 @@ def get_performance_metrics(score_out_of_8):
         7: "Exceeding Expectation 2",
         8: "Exceeding Expectation 1"
     }
-    # Standardize score between 1 and 8
     val = int(round(max(1, min(score_out_of_8, 8))))
     return val, grading.get(val)
 
@@ -69,32 +67,33 @@ if menu == "Admin: Student Upload":
     if uploaded_file:
         try:
             df = pd.read_excel(uploaded_file)
-            # Clean column names for easier matching
             df.columns = [str(c).strip() for c in df.columns]
             name_col = next((c for c in df.columns if c.lower() == 'name'), None)
 
             if name_col:
                 new_records = []
-                # Filter out empty names and duplicates
                 unique_names = df[name_col].dropna().unique()
                 
                 for name in unique_names:
                     for sub in SUBJECTS:
+                        # Initialized with Score 1 to avoid StreamlitValueBelowMinError
                         new_records.append({
                             'Name': str(name).strip().upper(), 
                             'Grade': selected_grade, 
                             'Subject': sub, 
-                            'Score': 0, 'Points': 0, 'Performance Level': 'Pending'
+                            'Score': 1, 
+                            'Points': 1, 
+                            'Performance Level': 'Below Expectation 2'
                         })
                 
                 temp_df = pd.DataFrame(new_records)
-                # Append to main DB and remove exact duplicates (Name+Grade+Subject)
                 st.session_state.students_db = pd.concat([st.session_state.students_db, temp_df]).drop_duplicates(
                     subset=['Name', 'Grade', 'Subject'], keep='first'
                 )
                 st.success(f"✅ Successfully registered {len(unique_names)} students to {selected_grade} registry!")
+                st.balloons()
             else:
-                st.error("❌ The file is missing a column named 'Name'. Please check your Excel headers.")
+                st.error("❌ The file is missing a column named 'Name'.")
         except Exception as e:
             st.error(f"Error processing file: {e}")
 
@@ -106,7 +105,7 @@ elif menu == "Admin: Teacher Management":
         with st.form("teacher_reg"):
             col1, col2 = st.columns(2)
             t_name = col1.text_input("Teacher's Full Name")
-            t_phone = col2.text_input("WhatsApp Number (e.g., +254...)")
+            t_phone = col2.text_input("WhatsApp Number (e.g., 254712345678)")
             t_sub = col1.selectbox("Teaching Subject", SUBJECTS)
             t_grade = col2.selectbox("Assigned Grade", GRADES)
             
@@ -123,8 +122,6 @@ elif menu == "Admin: Teacher Management":
     if st.session_state.teacher_db:
         st.subheader("Active Teacher Entry Links")
         for t in st.session_state.teacher_db:
-            # Construction of the WhatsApp link with pre-filled text
-            # Note: In a real deploy, replace 'localhost' with your Streamlit URL
             msg = f"Hello {t['name']}, enter marks for {t['sub']} ({t['grade']}) here: https://mc-aloyo.streamlit.app/"
             whatsapp_url = f"https://wa.me/{t['phone']}?text={msg.replace(' ', '%20')}"
             
@@ -143,7 +140,6 @@ elif menu == "Teacher: Marks Entry":
     active_grade = col1.selectbox("Select Your Grade", GRADES)
     active_sub = col2.selectbox("Select Your Subject", SUBJECTS)
     
-    # Filter DB for students in this specific class/subject
     mask = (st.session_state.students_db['Grade'] == active_grade) & \
            (st.session_state.students_db['Subject'] == active_sub)
     
@@ -157,8 +153,15 @@ elif menu == "Teacher: Marks Entry":
             updated_data = {}
             for idx, row in entry_df.iterrows():
                 if search_query.upper() in row['Name']:
+                    # Ensure value is at least 1 to match min_value=1
+                    current_val = max(1, int(row['Score']))
+                    
                     updated_data[idx] = st.number_input(
-                        f"{row['Name']}", min_value=1, max_value=8, value=int(row['Score']), key=f"score_{idx}"
+                        f"{row['Name']}", 
+                        min_value=1, 
+                        max_value=8, 
+                        value=current_val, 
+                        key=f"score_{idx}"
                     )
             
             if st.form_submit_button("Submit and Update Analysis"):
@@ -167,9 +170,9 @@ elif menu == "Teacher: Marks Entry":
                     st.session_state.students_db.at[idx, 'Score'] = score_val
                     st.session_state.students_db.at[idx, 'Points'] = pts
                     st.session_state.students_db.at[idx, 'Performance Level'] = level
-                st.success("Analysis Updated Automatically!")
+                st.success("Marks Submitted! Analysis Updated Automatically.")
     else:
-        st.warning("No students registered for this grade yet. Go to 'Student Upload' first.")
+        st.warning("No students registered for this grade yet.")
 
 # --- 4. ASSESSMENT REPORTS ---
 elif menu == "Reports: Student Assessment":
@@ -179,7 +182,6 @@ elif menu == "Reports: Student Assessment":
     grade_data = st.session_state.students_db[st.session_state.students_db['Grade'] == rep_grade]
     
     if not grade_data.empty:
-        # Calculate Aggregates
         student_totals = grade_data.groupby('Name')['Points'].sum().reset_index()
         student_totals['Percentage'] = ((student_totals['Points'] / 72) * 100).round(2)
         student_totals = student_totals.sort_values(by='Points', ascending=False)
@@ -189,7 +191,6 @@ elif menu == "Reports: Student Assessment":
         
         st.divider()
         
-        # Individual Report Printing
         st.subheader("🖨️ Individual Student Report")
         target_name = st.selectbox("Select Student", student_totals['Name'])
         
@@ -214,7 +215,6 @@ elif menu == "Reports: Student Assessment":
             c1.metric("Total Points", f"{total_p} / 72")
             c2.metric("Mean Percentage", f"{perc:.2f}%")
             
-            if st.button("Print Report (Browser)"):
-                st.info("To print: Use Ctrl+P (or Cmd+P) and save as PDF.")
+            st.info("To print: Press Ctrl+P (Windows) or Cmd+P (Mac) to save as PDF.")
     else:
         st.info("No data available for this grade.")
