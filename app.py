@@ -88,7 +88,7 @@ if menu == "Admin: Student Upload":
                 temp_df = pd.DataFrame(new_records)
                 st.session_state.students_db = pd.concat([st.session_state.students_db, temp_df]).drop_duplicates(
                     subset=['Name', 'Grade', 'Subject'], keep='first'
-                )
+                ).reset_index(drop=True)
                 st.success(f"✅ Successfully registered {len(unique_names)} students to {selected_grade} registry!")
                 st.balloons()
             else:
@@ -131,13 +131,13 @@ elif menu == "Admin: Teacher Management":
                 """)
                 st.divider()
 
-# --- 3. TEACHER MARKS ENTRY ---
+# --- 3. TEACHER MARKS ENTRY (FIXED) ---
 elif menu == "Teacher: Marks Entry":
     st.header("📝 Subject Marks Entry")
     
     col1, col2 = st.columns(2)
-    active_grade = col1.selectbox("Select Your Grade", GRADES)
-    active_sub = col2.selectbox("Select Your Subject", SUBJECTS)
+    active_grade = col1.selectbox("Select Grade", GRADES)
+    active_sub = col2.selectbox("Select Subject", SUBJECTS)
     
     mask = (st.session_state.students_db['Grade'] == active_grade) & \
            (st.session_state.students_db['Subject'] == active_sub)
@@ -146,29 +146,38 @@ elif menu == "Teacher: Marks Entry":
     
     if not entry_df.empty:
         st.write(f"Entering marks for: **{active_sub}** | **{active_grade}**")
-        search_query = st.text_input("🔍 Search Student Name")
+        search_query = st.text_input("🔍 Search Student Name").upper()
         
-        with st.form("marks_submission"):
+        # Start the Form
+        with st.form(key=f"form_{active_grade}_{active_sub}"):
             updated_data = {}
+            
             for idx, row in entry_df.iterrows():
-                if search_query.upper() in row['Name']:
+                # If search is empty or name matches search
+                if not search_query or search_query in row['Name']:
                     current_val = max(1, int(row['Score']))
                     
+                    # Create a unique key using Index + Grade + Subject to prevent duplicates
+                    unique_key = f"input_{idx}_{active_grade}_{active_sub}"
+                    
                     updated_data[idx] = st.number_input(
-                        f"{row['Name']}", 
+                        label=f"{row['Name']}", 
                         min_value=1, 
                         max_value=8, 
                         value=current_val, 
-                        key=f"score_{idx}"
+                        key=unique_key
                     )
             
-            if st.form_submit_button("Submit and Update Analysis"):
+            # Form MUST have a submit button inside the 'with' block
+            submit_btn = st.form_submit_button("Submit Marks and Update Analysis")
+            
+            if submit_btn:
                 for idx, score_val in updated_data.items():
                     pts, level = get_performance_metrics(score_val)
                     st.session_state.students_db.at[idx, 'Score'] = score_val
                     st.session_state.students_db.at[idx, 'Points'] = pts
                     st.session_state.students_db.at[idx, 'Performance Level'] = level
-                st.success("Marks Submitted! Analysis Updated Automatically.")
+                st.success(f"Marks for {active_sub} in {active_grade} have been saved!")
     else:
         st.warning("No students registered for this grade yet.")
 
