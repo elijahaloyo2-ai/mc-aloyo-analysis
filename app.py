@@ -1,4 +1,4 @@
- import streamlit as st
+import streamlit as st
 import pandas as pd
 import uuid
 from datetime import datetime
@@ -76,7 +76,6 @@ if menu == "Admin: Student Upload":
                 
                 for name in unique_names:
                     for sub in SUBJECTS:
-                        # Initialized with Score 1 to avoid StreamlitValueBelowMinError
                         new_records.append({
                             'Name': str(name).strip().upper(), 
                             'Grade': selected_grade, 
@@ -153,7 +152,6 @@ elif menu == "Teacher: Marks Entry":
             updated_data = {}
             for idx, row in entry_df.iterrows():
                 if search_query.upper() in row['Name']:
-                    # Ensure value is at least 1 to match min_value=1
                     current_val = max(1, int(row['Score']))
                     
                     updated_data[idx] = st.number_input(
