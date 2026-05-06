@@ -85,13 +85,13 @@ GRADES = ["Grade 7", "Grade 8", "Grade 9"]
 
 # --- FUNCTIONS ---
 def calculate_analysis(percentage_score):
-    if percentage_score >= 90: return 8, "Exceeding Expectation 1"
-    elif percentage_score >= 80: return 7, "Exceeding Expectation 2"
-    elif percentage_score >= 70: return 6, "Meeting Expectation 1"
-    elif percentage_score >= 60: return 5, "Meeting Expectation 2"
-    elif percentage_score >= 50: return 4, "Approaching Expectation 1"
-    elif percentage_score >= 40: return 3, "Approaching Expectation 2"
-    elif percentage_score >= 30: return 2, "Below Expectation 1"
+    if percentage_score >= 100: return 8, "Exceeding Expectation 1"
+    elif percentage_score >= 89: return 7, "Exceeding Expectation 2"
+    elif percentage_score >= 74: return 6, "Meeting Expectation 1"
+    elif percentage_score >= 57: return 5, "Meeting Expectation 2"
+    elif percentage_score >= 40: return 4, "Approaching Expectation 1"
+    elif percentage_score >= 30: return 3, "Approaching Expectation 2"
+    elif percentage_score >= 20: return 2, "Below Expectation 1"
     else: return 1, "Below Expectation 2"
 
 # --- SIDEBAR NAVIGATION ---
